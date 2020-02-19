@@ -1,22 +1,27 @@
-# Meta --------------------------------------------------------------------
+########################################################################################
 ## Author:        Ian McCarthy
 ## Date Created:  5/30/2019
-## Date Edited:   2/14/2020
-
-
-# Preliminaries -----------------------------------------------------------
+## Date Edited:   11/1/2019
+## Notes:         R file to call other HCRIS code and combine data
+########################################################################################
 if (!require("pacman")) install.packages("pacman")
 pacman::p_load(tidyverse, ggplot2, dplyr, lubridate)
-source('data-code/paths.R')
+
+########################################################################################
+## Set file paths
+########################################################################################
+path.code="/Users/JZHU/hwk-2-JiachengZ98/data-code"
+path.data="/Volumes/Transcend/2020Spring/Econ 470/Econ 470 dataset/HW2-HCRIS/Final data"
 
 
+########################################################################################
+## Combine different HCRIS versions (1996 and 2010)
+########################################################################################
+path.raw = "/Volumes/Transcend/2020Spring/Econ 470/Econ 470 dataset/HW2-HCRIS"
 
-# Read and combine data ---------------------------------------------------
-path.raw=path.data.1996
-source('data-code/H1_HCRISv1996.R')
+source(paste(path.code,"/H1_HCRISv1996.R",sep=""),local=TRUE,echo=FALSE)
 
-path.raw=path.data.2010
-source('data-code/H2_HCRISv2010.R')
+source(paste(path.code,"/H2_HCRISv2010.R",sep=""),local=TRUE,echo=FALSE)
 
 
 ## create missing variables for columns introduced in v2010 of hcris forms
@@ -33,11 +38,13 @@ final.hcris=rbind(final.hcris.v1996,final.hcris.v2010) %>%
   select(-year)
 
 ## count of hospitals/provider_number by year
-final.hcris %>% group_by(fyear) %>% count()
+final.hcris %>% group_by(fyear)%>% count()
 
+summary(final.hcris$tot_charges)
 
-
-# Clean data --------------------------------------------------------------
+########################################################################################
+## Clean data for final analytic file
+########################################################################################
 
 ## create count of reports by hospital fiscal year
 final.hcris =
@@ -136,14 +143,14 @@ unique.hcris4 =
   mutate(source='weighted_average')
   
 
-
-# Save final data ---------------------------------------------------------
-
+########################################################################################
+## Create and save final dataset
+########################################################################################
 final.hcris.data=rbind(unique.hcris1, unique.hcris2, unique.hcris3, unique.hcris4)
 final.hcris.data =
   final.hcris.data %>%
   rename(year=fyear) %>%
   arrange(provider_number, year)
 
-write_tsv(final.hcris.data,'data/HCRIS_Data.txt',append=FALSE,col_names=TRUE)
-write_rds(final.hcris.data,'data/HCRIS_Data.rds')
+write_tsv(final.hcris.data,path=paste(path.data,"/HCRIS_Data.txt",sep=""),append=FALSE,col_names=TRUE)
+write_rds(final.hcris.data,paste(path.data,"/HCRIS_Data.rds",sep=""))
