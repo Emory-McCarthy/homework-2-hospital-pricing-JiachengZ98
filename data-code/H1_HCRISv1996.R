@@ -11,7 +11,7 @@
 ## -- This code forms a data.frame and tibble that consists of each variable of interest
 ##    and its location in the HCRIS forms. 
 ########################################################################################
-
+library(tidyverse)
 hcris.vars = NULL
 hcris.vars = rbind(hcris.vars,c('beds','S300001','01200','0100','numeric'))
 hcris.vars = rbind(hcris.vars,c('tot_charges','G300000','00100','0100','numeric'))
@@ -32,6 +32,7 @@ hcris.vars = rbind(hcris.vars,c('zip','S200000','00101','0300','alpha'))
 hcris.vars = rbind(hcris.vars,c('county','S200000','00101','0400','alpha'))
 colnames(hcris.vars)=c("variable","WKSHT_CD","LINE_NUM","CLMN_NUM","source")
 
+path.raw = "/Volumes/Transcend/2020Spring/Econ 470/Econ 470 dataset/HW2-HCRIS"
 
 ########################################################################################
 ## Pull relevant data
@@ -39,28 +40,21 @@ colnames(hcris.vars)=c("variable","WKSHT_CD","LINE_NUM","CLMN_NUM","source")
 ##    fiscal years
 ########################################################################################
 for (i in 1998:2011) {
-  HCRIS.alpha=read_csv(paste(path.raw,"\\HospitalFY",i,"\\hosp_",i,"_ALPHA.csv",sep=""),
-                       col_names=c('RPT_REC_NUM','WKSHT_CD','LINE_NUM','CLMN_NUM','ITM_VAL_NUM'))
-  HCRIS.numeric=read_csv(paste(path.raw,"\\HospitalFY",i,"\\hosp_",i,"_NMRC.csv",sep=""),
-                         col_names=c('RPT_REC_NUM','WKSHT_CD','LINE_NUM','CLMN_NUM','ITM_VAL_NUM'))
-  HCRIS.report=read_csv(paste(path.raw,"\\HospitalFY",i,"\\hosp_",i,"_RPT.csv",sep=""),
-                        col_names=c('RPT_REC_NUM','PRVDR_CTRL_TYPE_CD','PRVDR_NUM','NPI',
-                                    'RPT_STUS_CD','FY_BGN_DT','FY_END_DT','PROC_DT',
-                                    'INITL_RPT_SW','LAST_RPT_SW','TRNSMTL_NUM','FI_NUM',
-                                    'ADR_VNDR_CD','FI_CREAT_DT','UTIL_CD','NPR_DT',
-                                    'SPEC_IND','FI_RCPT_DT'))
+  HCRIS.alpha=read_csv(paste(path.raw,"/HospitalFY/hosp_alpha2552_96_",i,"_long.csv",sep=""))
+  HCRIS.numeric=read_csv(paste(path.raw,"/HospitalFY/hosp_nmrc2552_96_",i,"_long.csv",sep=""))
+  HCRIS.report=read_csv(paste(path.raw,"/HospitalFY/hosp_rpt2552_96_",i,".csv",sep=""))
   final.reports = HCRIS.report %>%
-    select(report=RPT_REC_NUM, provider_number=PRVDR_NUM, npi=NPI, 
-           fy_start=FY_BGN_DT, fy_end=FY_END_DT, date_processed=PROC_DT, 
-           date_created=FI_CREAT_DT, status=RPT_STUS_CD) %>%
+    select(report=rpt_rec_num, provider_number=prvdr_num, npi=npi, 
+           fy_start=fy_bgn_dt, fy_end=fy_end_dt, date_processed=proc_dt, 
+           date_created=fi_creat_dt, status=rpt_stus_cd) %>%
     mutate(year=i)
-  
+  HCRIS.alpha = HCRIS.alpha %>% rename(itm_val_num = alphnmrc_itm_txt)
   for (v in 1:nrow(hcris.vars)) {
     hcris.data=get(paste("HCRIS.",hcris.vars[v,5],sep=""))
     var.name=quo_name(hcris.vars[v,1])    
     val = hcris.data %>%
-      filter(WKSHT_CD==hcris.vars[v,2], LINE_NUM==hcris.vars[v,3], CLMN_NUM==hcris.vars[v,4]) %>%
-      select(report=RPT_REC_NUM, !!var.name:=ITM_VAL_NUM) 
+      filter(wksht_cd==hcris.vars[v,2], line_num==hcris.vars[v,3], clmn_num==hcris.vars[v,4]) %>%
+      select(report=rpt_rec_num, !!var.name:=itm_val_num) 
     assign(paste("val.",v,sep=""),val)
     final.reports=left_join(final.reports, 
               get(paste("val.",v,sep="")),
