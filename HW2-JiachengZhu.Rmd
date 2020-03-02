@@ -1,0 +1,115 @@
+---
+Author: "Jiacheng Zhu"
+title: "HW2-JiachengZhu"
+output: html_document
+---
+```{r,include=FALSE}
+
+library(tidyverse)
+library(ggplot2)
+library(dplyr)
+library(lubridate)
+library(scales)
+library(ggbeeswarm)
+
+load("/Users/JZHU/hwk-2-JiachengZ98/HCRIS.Workspace.RData")
+```
+
+```{r}
+final.hcris.v1996 %>% filter(year == 2010) %>% count()
+```
+
+```{r}
+duplicate <- duplicate.hcris3 %>% ungroup() %>% group_by(fyear) %>% summarise(count=n())
+ggplot(data=duplicate, aes(x=fyear, y=count, group=1)) +
+  geom_line(aes(group=1))+
+  theme_bw()
+```
+
+```{r} 
+final.hcris.data <- final.hcris.data %>% group_by(year) %>% mutate(count.hospitals =n())
+final.hcris.data %>% 
+  ggplot(aes(x=year, y=count.hospitals)) +
+  geom_line(aes(group=1))+
+  theme_bw()
+
+```
+
+
+```{r}
+quantile(final.hcris.data$tot_charges,c(.05,.95),na.rm = TRUE)
+
+final.hcris.data %>% filter(!is.na(tot_charges) & tot_charges > 0 & 
+                    (tot_charges > 5694164 & tot_charges < 1448225734))%>%
+                    mutate(log_tot_charges = log(tot_charges)) %>%
+  ggplot(aes(x= year, y= log_tot_charges)) +
+  geom_quasirandom(alpha = 0.05, width = 0.1)+  
+  stat_summary(fun.y = "median", geom = "point", size = 2) +
+  stat_summary(fun.y = "median", geom = "line", aes(group = 1),
+               size = 1.1)+
+   scale_y_continuous(limits = c(15,23),
+                     expand = c(0,0))
+
+```
+
+
+```{r}
+final.hcris.data <- final.hcris.data %>% 
+  mutate(discount_factor = 1-tot_discounts/tot_charges, 
+  price_num = (ip_charges + icu_charges + ancillary_charges)*discount_factor - tot_mcare_payment,
+  price_denom = tot_discharges - mcare_discharges, 
+  price = price_num/price_denom) %>%   
+  filter(price_denom>10, !is.na(price_denom), 
+         price_num>0, !is.na(price_num))
+
+final.hcris.data %>% 
+  ggplot(aes(x = year, y = price)) +
+  geom_quasirandom(alpha = 0.05, width = 0.1)+
+  stat_summary(fun.y = "median", geom = "point", size = 2) +
+  stat_summary(fun.y = "median", geom = "line", aes(group = 1),
+               size = 1.1) +
+  scale_y_continuous(limits = c(-3000,50000),
+                     expand = c(0,0),
+                     labels = scales::unit_format(unit = "$"))  
+
+```
+
+```{r}
+
+final.hcris.data <- final.hcris.data %>% 
+  mutate(hvbp_payment = ifelse(is.na(hvbp_payment),0,hvbp_payment),
+          hrrp_payment = ifelse(is.na(hrrp_payment),0,abs(hrrp_payment)))%>%
+  mutate(penalized = case_when(
+  hrrp_payment > 0~1,
+))
+
+final.hcris.data %>% ungroup %>% group_by(year,penalized) %>% filter(!is.na(penalized)) %>%   
+            mutate(count.penalized = n(), penalized.share = count.penalized / count.hospitals) %>%
+  ggplot(aes(x=year, y= penalized.share))+
+  geom_line(aes(group=1)) +
+  theme_bw()
+
+```
+
+
+```{r}
+final.hcris.data <- final.hcris.data %>% mutate(penalty = (hvbp_payment - hrrp_payment <0))
+final.hcris.data.2012 <- final.hcris.data %>% select(-penalized,-price_denom,-price_num,-discount_factor) %>% filter(year == 2012)
+final.hcris.data.2012 %>% filter(penalty == TRUE) %>% summarise(mean.penalized = mean(price))
+final.hcris.data.2012 %>% filter(penalty == FALSE) %>% summarise(mean.unpenalized = mean(price))
+```
+
+```{r}
+quantile(final.hcris.data.2012$beds,c(.25,.5,.75),na.rm = TRUE)
+
+final.hcris.data.2012 <- final.hcris.data.2012 %>% mutate(
+  quartile.1 = (case_when(beds<90 ~1)),
+  quartile.2 = (case_when(beds >=90 & beds<159 ~1)),
+  quartile.3 = (case_when(beds >=159 & beds <280 ~1)),
+  quartile.4 = (case_when(beds >=280 ~1))
+)
+```
+
+```{r}
+
+```

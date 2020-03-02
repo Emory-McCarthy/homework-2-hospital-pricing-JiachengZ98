@@ -13,7 +13,6 @@ pacman::p_load(tidyverse, ggplot2, dplyr, lubridate)
 path.code="/Users/JZHU/hwk-2-JiachengZ98/data-code"
 path.data="/Volumes/Transcend/2020Spring/Econ 470/Econ 470 dataset/HW2-HCRIS/Final data"
 
-
 ########################################################################################
 ## Combine different HCRIS versions (1996 and 2010)
 ########################################################################################
